@@ -1,5 +1,5 @@
 <?php
-ini_set('display_errors', 1);
+//ini_set('display_errors', 1);
 require_once('TwitterAPIExchange.php');
 /** Set access tokens here - see: https://dev.twitter.com/apps/ **/
 $settings = array(
@@ -9,22 +9,17 @@ $settings = array(
 'consumer_secret' => "SlROjgVpdrfkLUvm04LNxP7jTmI0EzTHxcoZxfowxE9CmdTzBh"
 );
 
-$user = 'emilysimms7';
+$user = $_GET['id'];
 $twitterInfo = array();
-
+$twitterInfo['user_screenname'] = $user;
 $twitter = new TwitterAPIExchange($settings);
 
 $followerIDs = getIDs($twitter,$user);
 $twitterInfo['follower_count'] = count($followerIDs);
-//echo "FOLLOWER COUNT: " .  count($followerIDs);
-//echo "</br></br>";
 $twitterInfo['follower_ids'] = $followerIDs;
-// echo "FOLLOWER LIST: " . json_encode($followerIDs);
-// echo "</br></br>";
 
-//echo "LOCATIONS: </br></br>";
 $followers = array();
-for($i=0;$i<14;$i++)
+for($i=0;$i<15;$i++)
 {
 	if(is_null($followerIDs[$i]))
 	{
@@ -34,22 +29,29 @@ for($i=0;$i<14;$i++)
 	$getfield = '?user_id=' . $followerIDs[$i];
 	$requestMethod = 'GET';
 	$decoded = json_decode($twitter->setGetfield($getfield)->buildOauth($url, $requestMethod)->performRequest());
-	$location = $decoded->location;
-
-	if($location == null)
+	if($decoded->protected)
 	{
-		$location = "No Location Listed";
-	}
-	
-	// echo "<b>ID: " . $followerIDs[$i] . "</b></br>";
-	// echo $location . "</br>";
-
-	// getIDs($twitter,$user,$followerIDs[$i]) . "</br></br>";
-	$followers[] = array(
+		$protected = 'Protected Account, No access';
+		$followers[] = array(
 			'id' => $followerIDs[$i],
 			'location' => $location,
-			'following' => getIDs($twitter,$user,$followerIDs[$i])
+			'following' => $protected
 		);
+	}
+	else{
+		$location = $decoded->location;
+
+		if($location == null)
+		{
+			$location = "No Location Listed";
+		}
+
+		$followers[] = array(
+				'id' => $followerIDs[$i],
+				'location' => $location,
+				'following' => getIDs($twitter,$user,$followerIDs[$i])
+			);
+	}
 }
 
 $twitterInfo['followers'] = $followers;
@@ -87,7 +89,7 @@ function getIDs($twitter,$twitterSN,$twitterID=null)
 	while($next_cursor != 0)
 	{
 		$url = 'https://api.twitter.com/1.1/'.$whichType.'/ids.json';
-		$getfield = $getfieldPiece . '&cursor=' . $next_cursor; //**** NAME HERE ****
+		$getfield = $getfieldPiece . '&cursor=' . $next_cursor;
 		$requestMethod = 'GET';
 
 		$decoded = json_decode($twitter->setGetfield($getfield)->buildOauth($url, $requestMethod)->performRequest());
