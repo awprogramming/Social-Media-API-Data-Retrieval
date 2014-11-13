@@ -10,6 +10,7 @@ $settings = array(
 );
 
 $user = $_GET['id'];
+//$user = '';
 $twitterInfo = array();
 $twitterInfo['user_screenname'] = $user;
 $twitter = new TwitterAPIExchange($settings);
@@ -18,22 +19,25 @@ $followerIDs = getIDs($twitter,$user);
 $twitterInfo['follower_count'] = count($followerIDs);
 $twitterInfo['follower_ids'] = $followerIDs;
 
+if($followerIDs=="Rate limit exceeded")
+{
+	$twitterInfo['follower_count'] = $followerIDs;
+	$followers = $followerIDs;
+}
+else{
 $followers = array();
 for($i=0;$i<15;$i++)
 {
-	if(is_null($followerIDs[$i]))
-	{
-		break;
-	}
+	$rand = mt_rand(0,count($followerIDs));
 	$url = 'https://api.twitter.com/1.1/users/show.json';
-	$getfield = '?user_id=' . $followerIDs[$i];
+	$getfield = '?user_id=' . $followerIDs[$rand];
 	$requestMethod = 'GET';
 	$decoded = json_decode($twitter->setGetfield($getfield)->buildOauth($url, $requestMethod)->performRequest());
 	if($decoded->protected)
 	{
 		$protected = 'Protected Account, No access';
 		$followers[] = array(
-			'id' => $followerIDs[$i],
+			'id' => $followerIDs[$rand],
 			'location' => $location,
 			'following' => $protected
 		);
@@ -47,14 +51,22 @@ for($i=0;$i<15;$i++)
 		}
 
 		$followers[] = array(
-				'id' => $followerIDs[$i],
+				'id' => $followerIDs[$rand],
 				'location' => $location,
-				'following' => getIDs($twitter,$user,$followerIDs[$i])
+				'following' => getIDs($twitter,$user,$followerIDs[$rand])
 			);
 	}
 }
+}
 
 $twitterInfo['followers'] = $followers;
+
+$file = 'twitter.txt';
+// Open the file to get existing content
+$current = file_get_contents($file);
+$current .= json_encode($twitterInfo) . PHP_EOL . PHP_EOL;
+// Write the contents back to the file
+file_put_contents($file, $current);
 
 echo json_encode($twitterInfo);
 
@@ -74,7 +86,7 @@ function getIDs($twitter,$twitterSN,$twitterID=null)
 
 	$decoded = json_decode($twitter->setGetfield($getfield)->buildOauth($url, $requestMethod)->performRequest());
 
-	if(!is_null($decoded->errors))
+	if(isset($decoded->errors))
 	{
 		return $decoded->errors[0]->message;
 	}
@@ -93,8 +105,11 @@ function getIDs($twitter,$twitterSN,$twitterID=null)
 		$requestMethod = 'GET';
 
 		$decoded = json_decode($twitter->setGetfield($getfield)->buildOauth($url, $requestMethod)->performRequest());
+		if(isset($decoded->errors[0]))
+		{
+			break;
+		}
 		$moreids = $decoded->ids;
-
 		$idsForCount = array_merge($idsForCount,$moreids);
 
 		$next_cursor = $decoded->next_cursor;
