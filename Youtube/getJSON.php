@@ -106,6 +106,14 @@ else
   $youtubeInfo['err'] = "Channel not found.";
 }
 
+
+$file = 'youtube.txt';
+// Open the file to get existing content
+$current = file_get_contents($file);
+$current .= json_encode($youtubeInfo) . PHP_EOL . PHP_EOL;
+// Write the contents back to the file
+file_put_contents($file, $current);
+
 echo json_encode($youtubeInfo);
 
 ?>
